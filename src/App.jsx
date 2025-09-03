@@ -4,7 +4,7 @@ import axios from "axios";
 import "./App.css";
 import { Plus, Package, Trash2, ShoppingBag } from "lucide-react";
 
-/* ErrorBoundary (siz yozganiga o'xshash) */
+/* ErrorBoundary */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -35,10 +35,10 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-/* --- Yordamchi funksiyalar --- */
-const makeLocalId = () => `_local_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+/* --- Helper funksiyalar --- */
+const makeLocalId = () =>
+  `_local_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-/* normalize va dedupe — hamma productga doimiy `uid` qo'shadi */
 const normalizeProducts = (list) => {
   if (!Array.isArray(list)) return [];
   const map = new Map();
@@ -49,7 +49,6 @@ const normalizeProducts = (list) => {
       p._localId = makeLocalId();
     }
     p.uid = p.id != null ? String(p.id) : p._localId;
-    // agar mapda bo'lsa override bilan so'nggi qiymatni olamiz
     map.set(p.uid, p);
   }
   return Array.from(map.values());
@@ -67,7 +66,6 @@ function App() {
     axios
       .get("https://2a02dff8463bd267.mokky.dev/products")
       .then((res) => {
-        // normalize va uid qo'shamiz
         setProducts(normalizeProducts(res.data));
         console.log("Loaded products:", res.data);
       })
@@ -94,17 +92,20 @@ function App() {
     setLoading(true);
     try {
       const payload = { name, price: parseFloat(price) || 0 };
-      const res = await axios.post("https://2a02dff8463bd267.mokky.dev/products", payload);
+      const res = await axios.post(
+        "https://2a02dff8463bd267.mokky.dev/products",
+        payload
+      );
       const created = res?.data || {};
 
-      // Agar server id bermasa — localId yaratamiz
       if (created.id == null && created._localId == null) {
         created._localId = makeLocalId();
       }
       created.uid = created.id != null ? String(created.id) : created._localId;
 
-      // setProducts prev bilan update qilamiz va dedupe qilamiz
-      setProducts((prev) => normalizeProducts([...(Array.isArray(prev) ? prev : []), created]));
+      setProducts((prev) =>
+        normalizeProducts([...(Array.isArray(prev) ? prev : []), created])
+      );
 
       setOpen(false);
       setName("");
@@ -117,21 +118,18 @@ function App() {
     }
   };
 
-  /* handleDelete — uid bilan ishlaydi. Agar serverda id bo'lsa, serverga DELETE so'rov yuboradi.
-     Agar bu element faqat local bo'lsa (_localId), faqat frontenddan olib tashlaymiz. */
   const handleDelete = async (uid) => {
     const product = products.find((p) => p.uid === uid);
     if (!product) return;
 
-    // confirm (iste'molchi uchun)
     if (!window.confirm("Haqiqatan o'chirmoqchimisiz?")) return;
 
     try {
       if (product.id != null) {
-        // faqat serverda mavjud bo'lsa DELETE qiling
-        await axios.delete(`https://2a02dff8463bd267.mokky.dev/products/${product.id}`);
+        await axios.delete(
+          `https://2a02dff8463bd267.mokky.dev/products/${product.id}`
+        );
       }
-      // har doim frontenddan olib tashlaymiz (prev snapshot bilan)
       setProducts((prev) => prev.filter((p) => p.uid !== uid));
     } catch (err) {
       console.error("Delete error:", err);
@@ -139,7 +137,10 @@ function App() {
     }
   };
 
-  const totalValue = products.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+  const totalValue = products.reduce(
+    (sum, p) => sum + (parseFloat(p.price) || 0),
+    0
+  );
 
   return (
     <ErrorBoundary>
@@ -181,7 +182,10 @@ function App() {
                 <div className="empty-state">
                   <div className="empty-state-icon">📦</div>
                   <h3>Hech qanday mahsulot topilmadi</h3>
-                  <p>Birinchi mahsulotingizni qo'shish uchun yuqoridagi tugmani bosing</p>
+                  <p>
+                    Birinchi mahsulotingizni qo'shish uchun yuqoridagi tugmani
+                    bosing
+                  </p>
                 </div>
               </li>
             ) : (
@@ -193,7 +197,7 @@ function App() {
                       <div className="product-price">{p.price} so'm</div>
                     </div>
                     <button
-                      onClick={() => handleDelete(p.uid)} // NOTE: uid bilan chaqiramiz
+                      onClick={() => handleDelete(p.uid)}
                       className="btn btn-danger"
                       title="Mahsulotni o'chirish"
                     >
@@ -207,56 +211,71 @@ function App() {
           </ul>
         </div>
 
-        {/* Modal (persisted, visibility toggled) */}
-        <div
-          className="modal-overlay"
-          style={{ display: open ? 'flex' : 'none' }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setOpen(false);
-          }}
-        >
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">
-                <Plus size={24} /> Yangi mahsulot qo'shish
-              </h2>
-            </div>
+        {/* Modal */}
+        {open && (
+          <div
+            className="modal-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setOpen(false);
+            }}
+          >
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2 className="modal-title">
+                  <Plus size={24} /> Yangi mahsulot qo'shish
+                </h2>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Mahsulot nomi</label>
-              <input
-                type="text"
-                placeholder="Masalan: iPhone 15"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="form-input"
-                ref={inputRef}
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label">Mahsulot nomi</label>
+                <input
+                  type="text"
+                  placeholder="Masalan: iPhone 15"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="form-input"
+                  ref={inputRef}
+                />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Mahsulot narxi (so'm)</label>
-              <input
-                type="number"
-                placeholder="Masalan: 15000000"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="form-input"
-                min="0"
-                step="0.01"
-              />
-            </div>
+              <div className="form-group">
+                <label className="form-label">Mahsulot narxi (so'm)</label>
+                <input
+                  type="number"
+                  placeholder="Masalan: 15000000"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="form-input"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-            <div className="modal-actions">
-              <button onClick={() => setOpen(false)} className="btn btn-secondary" disabled={loading}>
-                Bekor qilish
-              </button>
-              <button onClick={handleCreate} className={`btn btn-success ${loading ? "loading" : ""}`} disabled={loading}>
-                {loading ? "Saqlanmoqda..." : (<><Plus size={16} /> Saqlash</>)}
-              </button>
+              <div className="modal-actions">
+                <button
+                  onClick={() => setOpen(false)}
+                  className="btn btn-secondary"
+                  disabled={loading}
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleCreate}
+                  className={`btn btn-success ${loading ? "loading" : ""}`}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    "Saqlanmoqda..."
+                  ) : (
+                    <>
+                      <Plus size={16} /> Saqlash
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </ErrorBoundary>
   );
