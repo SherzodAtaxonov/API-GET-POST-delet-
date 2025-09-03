@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
+ import axios from "axios";
 import "./App.css";
 import { Plus, Package, Trash2, ShoppingBag } from "lucide-react";
 
